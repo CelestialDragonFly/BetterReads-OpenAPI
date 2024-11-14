@@ -1,0 +1,259 @@
+openapi: 3.0.3
+info:
+  title: BetterReads API
+  description: |-
+    BetterReads OpenAPI Spec Document for implementing and interacting with the BetterReads API. We use oapi-codegen for generating our server stubs.
+  termsOfService: http://todo.com/
+  contact:
+    email: robertjhird@gmail.com
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  version: 1.0.11
+externalDocs:
+  description: BetterReads Repository
+  url: https://github.com/CelestialDragonFly/BetterReads-Platform
+servers:
+  - url: https://todo.when.hosting
+tags:
+  - name: books
+    description: APIs for retrieving information about books
+  - name: library
+    description: APIs for interacting with the user's library
+
+paths:
+  /books:
+    get:
+      tags:
+      - books
+      summary: Query books from the book API
+      description: Retrieve a list of books by the requested query parameter. <br>You may mix and match query parameters to create the desired user experiences. <br>For example `title=harry+potter&langauge=fr` would return the French version of Harry Potter books.
+      parameters:
+        - name: query
+          in: query
+          required: false
+          schema:
+            type: string
+            example: the+lord+of+the+rings
+          description: A general search mechanism, intended to be used by a search bar with user input.
+        - name: title
+          in: query
+          required: false
+          schema:
+            type: string
+            example: harry+potter
+          description: Query books by their title.
+        - name: author
+          in: query
+          required: false
+          schema:
+            type: string
+            example: jk+rowling
+          description: Query books by their author.
+        - name: subject
+          in: query
+          required: false
+          schema:
+            type: string
+            example: software+engineering
+          description: Query books about subjects.
+        - name: place
+          in: query
+          required: false
+          schema:
+            type: string
+            example: lisbon
+          description: Query books about locations.
+        - name: language
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [
+                "eng",
+                "rus",
+                "swe",
+                "fre",
+                "kor",
+                "ger",
+                "tur",
+                "jpn",
+                "cat",
+                "glg",
+                "por",
+                "pol",
+                "slo",
+                "cze",
+                "bul",
+                "dut",
+                "ita",
+                "spa",
+              ]
+            example: eng
+          description: Query books written in the requested language.
+        - name: publisher
+          in: query
+          required: false
+          schema:
+            type: string
+            example: penguin+random+house
+          description: Query books about locations.
+      responses:
+        '200':
+          description: A list of books
+          content:
+            application/json:
+              schema:
+                type: object
+                items:
+                  $ref: '#/components/schemas/GetBooksResponse'
+        '400':
+          description: Invalid query parameters
+
+  /books/{book_id}:
+    get:
+      tags:
+      - books
+      summary: Retrieve a book via the book id
+      description: Add a specific book to the user's book list.
+      parameters:
+        - name: book_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The ID of the user
+      responses:
+        '200':
+          description: A list of books
+          content:
+            application/json:
+              schema:
+                type: object
+                items:
+                  $ref: '#/components/schemas/Book'
+        '404':
+          description: Book not found   
+
+  /library:
+    get:
+      tags:
+      - library
+      summary: Retreive a user's entire library of saved books
+      description: todo
+      responses:
+        '200':
+          description: The user's library
+          content:
+            application/json:
+              schema:
+                type: object
+                items:
+                  $ref: '#/components/schemas/GetLibraryResponse'
+        '400':
+          description: Invalid user or book ID
+  /library/{shelf}/{book_id}:
+    put:
+      tags:
+      - library
+      summary: Add a book to a user's book list
+      description: Add a specific book to the user's book list.
+      parameters:
+        - name: shelf
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The ID of the user
+        - name: book_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The ID of the book to remove
+      responses:
+        '201':
+          description: Book added to Want to Read list
+        '400':
+          description: Invalid user or book ID
+    delete:
+      tags:
+      - library
+      summary: Remove a book from all user lists
+      description: Remove a specific book from the user's Want to Read, Reading, and Read lists.
+      parameters:
+        - name: shelf
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: book_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The ID of the book to remove
+      responses:
+        '204':
+          description: Book removed from all lists
+        '400':
+          description: Invalid user or book ID
+          
+          
+# Feed 
+## started
+## finished
+# User APIs
+
+components:
+  schemas:
+    
+    Book:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique identifier for the book
+        title:
+          type: string
+        author:
+          type: string
+        genre:
+          type: string
+        book_image: 
+          type: string
+        published_date:
+          type: string
+          format: date
+        description:
+          type: string
+          
+    GetBooksResponse:
+      type: object
+      properties:
+        books:
+          type: array
+          items:
+            $ref: '#/components/schemas/Book'
+     
+    LibraryItem:
+      type: object
+      properties:
+        book_id:
+          type: string
+        title:
+          type: string
+        author:
+          type: string
+        book_image: 
+          type: string
+        shelf:
+          type: string
+        
+    GetLibraryResponse:
+      type: object
+      properties:
+        library:
+          type: array
+          items:
+            $ref: '#/components/schemas/LibraryItem'
