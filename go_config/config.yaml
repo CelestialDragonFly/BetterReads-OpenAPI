@@ -1,7 +1,0 @@
-# yaml-language-server: ...
-package: betterreads
-generate:
-  std-http-server: true
-  strict-server: true
-  models: true
-output: ./generated/go/betterreads_gen.go
