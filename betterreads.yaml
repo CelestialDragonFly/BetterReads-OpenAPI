@@ -111,6 +111,12 @@ components:
       required:
         - id
         - title
+        - author
+        - genre
+        - book_image
+        - description
+        - language
+
       properties:
         id:
           type: string
