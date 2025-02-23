@@ -75,7 +75,6 @@ paths:
 
 components:
   schemas:
-  
     GetBooksResponse:
       type: object
       required:
@@ -91,6 +90,11 @@ components:
       required:
         - id
         - title
+        - author
+        - genre
+        - book_image
+        - publish_date
+        - description
       properties:
         id:
           type: string
