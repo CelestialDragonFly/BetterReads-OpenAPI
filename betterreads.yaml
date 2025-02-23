@@ -10,7 +10,7 @@ externalDocs:
   description: BetterReads Repository
   url: https://github.com/CelestialDragonFly/BetterReads-Platform
 servers:
-  - url: https://todo.when.hosting
+  - url: https://todo.when.hosting/api/v1
 tags:
   - name: books
     description: APIs for retrieving information about books
