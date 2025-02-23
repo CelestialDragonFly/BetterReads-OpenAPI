@@ -21,14 +21,44 @@ paths:
       tags:
         - books
       summary: Query books from the book API
-      description: Retrieve a list of books by the requested query parameter.
+      description: Retrieve a list of books by the requested query parameters.
       parameters:
         - in: query
-          name: request
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/GetBooksRequest"
+          name: query
+          schema:
+            type: string
+          description: A general search mechanism, intended to be used by a search bar with user input.
+          example: the lord of the rings
+        - in: query
+          name: title
+          schema:
+            type: string
+          description: Query books by their title.
+          example: harry potter
+        - in: query
+          name: author
+          schema:
+            type: string
+          description: Query books by their author.
+          example: jk rowling
+        - in: query
+          name: subject
+          schema:
+            type: string
+          description: Query books about subjects.
+          example: software engineering
+        - in: query
+          name: place
+          schema:
+            type: string
+          description: Query books about locations.
+          example: lisbon
+        - in: query
+          name: publisher
+          schema:
+            type: string
+          description: Query books by publisher.
+          example: penguin random house
       responses:
         "200":
           description: A list of books
@@ -45,57 +75,7 @@ paths:
 
 components:
   schemas:
-    GetBooksRequest:
-      type: object
-      properties:
-        query:
-          type: string
-          description: A general search mechanism, intended to be used by a search bar with user input.
-          example: the lord of the rings
-        title:
-          type: string
-          description: Query books by their title.
-          example: harry potter
-        author:
-          type: string
-          description: Query books by their author.
-          example: jk rowling
-        subject:
-          type: string
-          description: Query books about subjects.
-          example: software engineering
-        place:
-          type: string
-          description: Query books about locations.
-          example: lisbon
-        language:
-          type: string
-          description: Query books written in the requested language.
-          enum:
-            - eng
-            - rus
-            - swe
-            - fre
-            - kor
-            - ger
-            - tur
-            - jpn
-            - cat
-            - glg
-            - por
-            - pol
-            - slo
-            - cze
-            - bul
-            - dut
-            - ita
-            - spa
-          example: eng
-        publisher:
-          type: string
-          description: Query books by publisher.
-          example: penguin random house
-
+  
     GetBooksResponse:
       type: object
       required:
@@ -111,12 +91,6 @@ components:
       required:
         - id
         - title
-        - author
-        - genre
-        - book_image
-        - description
-        - language
-
       properties:
         id:
           type: string
@@ -134,27 +108,6 @@ components:
           format: date
         description:
           type: string
-        language:
-          type: string
-          enum:
-            - eng
-            - rus
-            - swe
-            - fre
-            - kor
-            - ger
-            - tur
-            - jpn
-            - cat
-            - glg
-            - por
-            - pol
-            - slo
-            - cze
-            - bul
-            - dut
-            - ita
-            - spa
 
     ErrorResponse:
       type: object
