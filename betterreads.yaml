@@ -5,7 +5,7 @@ info:
     BetterReads OpenAPI Spec Document for implementing and interacting with the BetterReads API.
   contact:
     email: robertjhird@gmail.com
-  version: 0.0.1
+  version: 0.0.2
 externalDocs:
   description: BetterReads Repository
   url: https://github.com/CelestialDragonFly/BetterReads-Platform
