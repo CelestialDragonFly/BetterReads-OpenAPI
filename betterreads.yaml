@@ -90,18 +90,25 @@ components:
       required:
         - id
         - title
-        - author
+        - author_name
+        - author_image
         - genre
         - book_image
         - publish_date
         - description
+        - isbn
+        - rating_count
+        - rating_average
+
       properties:
         id:
           type: string
           description: Unique identifier for the book
         title:
           type: string
-        author:
+        author_name:
+          type: string
+        author_image:
           type: string
         genre:
           type: string
@@ -112,6 +119,12 @@ components:
           format: date
         description:
           type: string
+        isbn:
+          type: string
+        rating_count:
+          type: number
+        rating_average:
+          type: number
 
     ErrorResponse:
       type: object
