@@ -5,7 +5,7 @@ info:
     BetterReads OpenAPI Spec Document for implementing and interacting with the BetterReads API.
   contact:
     email: robertjhird@gmail.com
-  version: 0.0.2
+  version: 0.0.3
 externalDocs:
   description: BetterReads Repository
   url: https://github.com/CelestialDragonFly/BetterReads-Platform
@@ -67,7 +67,19 @@ paths:
               schema:
                 $ref: "#/components/schemas/GetBooksResponse"
         "400":
-          description: Invalid query parameters
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal Server Error
           content:
             application/json:
               schema:
@@ -91,14 +103,13 @@ components:
         - id
         - title
         - author_name
-        - author_image
-        - genre
+        - author_id
         - book_image
-        - publish_date
-        - description
+        - published_year
         - isbn
         - rating_count
         - rating_average
+        - source
 
       properties:
         id:
@@ -108,23 +119,20 @@ components:
           type: string
         author_name:
           type: string
-        author_image:
-          type: string
-        genre:
+        author_id:
           type: string
         book_image:
           type: string
-        published_date:
-          type: string
-          format: date
-        description:
-          type: string
+        published_year:
+          type: integer
         isbn:
           type: string
         rating_count:
-          type: number
+          type: integer
         rating_average:
-          type: number
+          type: integer
+        source:
+          type: string
 
     ErrorResponse:
       type: object
