@@ -130,7 +130,7 @@ components:
         rating_count:
           type: integer
         rating_average:
-          type: integer
+          type: number
         source:
           type: string
 
