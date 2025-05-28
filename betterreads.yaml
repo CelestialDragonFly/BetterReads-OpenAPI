@@ -47,18 +47,6 @@ paths:
             type: string
           description: Query books about subjects.
           example: software engineering
-        - in: query
-          name: place
-          schema:
-            type: string
-          description: Query books about locations.
-          example: lisbon
-        - in: query
-          name: publisher
-          schema:
-            type: string
-          description: Query books by publisher.
-          example: penguin random house
       responses:
         "200":
           description: A list of books
