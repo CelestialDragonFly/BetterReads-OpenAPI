@@ -1,78 +1,1293 @@
 openapi: 3.0.3
 info:
   title: BetterReads Platform API
-  description: |-
-    BetterReads OpenAPI Spec Document for implementing and interacting with the BetterReads API.
+  description: |
+    The BetterReads Platform API provides a comprehensive book tracking and social reading experience. 
+    Users can discover books, manage their personal reading library, share thoughts through posts, 
+    and connect with other readers through a social feed system.
+    
+    ## Features
+    - **Book Discovery**: Search and browse books from multiple sources
+    - **Personal Library**: Track reading progress with customizable shelves
+    - **Social Features**: Follow users, create posts, comment, and like content
+    - **Reading Feed**: Personalized content stream from followed users
+    
+    ## Authentication
+    All endpoints require authentication via Bearer token unless otherwise specified.
+    
+    ## Pagination
+    List endpoints support pagination using `page` and `limit` query parameters.
   contact:
+    name: BetterReads API Support
     email: robertjhird@gmail.com
+    url: https://github.com/CelestialDragonFly/BetterReads-Platform
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
   version: 0.0.3
 externalDocs:
-  description: BetterReads Repository
+  description: BetterReads Platform Repository
   url: https://github.com/CelestialDragonFly/BetterReads-Platform
 servers:
-  - url: https://todo.when.hosting/
+  - url: https://localhost:8080
+    description: Local development server
+  # - url: https://api.betterreads.com
+  #   description: Production server
+  # - url: https://staging-api.betterreads.com
+  #   description: Staging server
+
+
 tags:
   - name: books
-    description: APIs for retrieving information about books
+    description: Book discovery and search operations
+    externalDocs:
+      description: Book API Documentation
+      url: https://docs.betterreads.com/books #tbd
+  - name: library
+    description: Personal library management operations
+    externalDocs:
+      description: Library Management Guide
+      url: https://docs.betterreads.com/library #tbd
+  - name: profile
+    description: Current user profile management
+    externalDocs:
+      description: Profile Management Guide
+      url: https://docs.betterreads.com/profile #tbd
+  - name: users
+    description: User discovery and social interactions
+    externalDocs:
+      description: Social Features Guide
+      url: https://docs.betterreads.com/social #tbd
+  - name: feed
+    description: Social feed and content management
+    externalDocs:
+      description: Feed API Guide
+      url: https://docs.betterreads.com/feed 
 
 paths:
   /api/v1/books:
     get:
       tags:
         - books
-      summary: Query books from the book API
-      description: Retrieve a list of books by the requested query parameters.
+      summary: Search for books
+      description: |
+        Search for books using various criteria including title, author, or general query.
+        Returns a paginated list of books from integrated book sources.
+        
+        **Search Priority:**
+        1. Exact title matches
+        2. Author name matches
+        3. Subject/genre matches
+        4. General content matches
+      operationId: searchBooks
       parameters:
-        - in: query
-          name: query
+        - name: query
+          in: query
+          description: General search query (searches across title, author, and description)
           schema:
             type: string
-          description: A general search mechanism, intended to be used by a search bar with user input.
-          example: the lord of the rings
-        - in: query
-          name: title
+            minLength: 1
+            maxLength: 100
+          example: "the lord of the rings"
+        - name: title
+          in: query
+          description: Search by book title (case-insensitive, partial matches supported)
           schema:
             type: string
-          description: Query books by their title.
-          example: harry potter
-        - in: query
-          name: author
+            minLength: 1
+            maxLength: 255
+          example: "harry potter"
+        - name: author
+          in: query
+          description: Search by author name (case-insensitive, partial matches supported)
           schema:
             type: string
-          description: Query books by their author.
-          example: jk rowling
-        - in: query
-          name: subject
+            minLength: 1
+            maxLength: 100
+          example: "j.k. rowling"
+        - name: subject
+          in: query
+          description: Search by subject or genre
           schema:
             type: string
-          description: Query books about subjects.
-          example: software engineering
+            minLength: 1
+            maxLength: 50
+          example: "fantasy"
+        - name: page
+          in: query
+          description: Page number for pagination (starts at 1)
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+          example: 1
+        - name: limit
+          in: query
+          description: Number of results per page
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          example: 20
       responses:
         "200":
-          description: A list of books
+          description: Successfully retrieved books matching search criteria
+          headers:
+            X-Total-Count:
+              description: Total number of books matching the search
+              schema:
+                type: integer
+            X-Page:
+              description: Current page number
+              schema:
+                type: integer
+            X-Per-Page:
+              description: Number of results per page
+              schema:
+                type: integer
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/GetBooksResponse"
+              examples:
+                successful_search:
+                  summary: Successful book search
+                  value:
+                    books:
+                      - id: "OL123456M"
+                        title: "The Lord of the Rings"
+                        author_name: "J.R.R. Tolkien"
+                        author_id: "OL26320A"
+                        book_image: "https://covers.openlibrary.org/b/id/123456-L.jpg"
+                        published_year: 1954
+                        isbn: "9780547928227"
+                        rating_count: 150000
+                        rating_average: 4.5
+                        source: "OpenLibrary"
         "400":
-          description: Bad request
+          description: Invalid search parameters
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-        "404":
-          description: Not Found
+              examples:
+                invalid_parameters:
+                  summary: Invalid search parameters
+                  value:
+                    code: "INVALID_PARAMETERS"
+                    message: "At least one search parameter is required"
+                    details:
+                      valid_parameters: ["query", "title", "author", "subject"]
+        "429":
+          description: Rate limit exceeded
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
         "500":
-          description: Internal Server Error
+          description: Internal server error
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /api/v1/library/{user_id}:
+    get:
+      tags:
+        - library
+      summary: Get user's library
+      description: |
+        Retrieve books from a user's personal library. Users can only access their own 
+        library unless the target user's library is public.
+        
+        **Library Shelves:**
+        - `shelf_want_to_read`: Books the user wants to read
+        - `shelf_reading`: Books currently being read
+        - `shelf_read`: Books the user has finished reading
+      operationId: getUserLibrary
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          description: UUID of the user whose library to retrieve
+          schema:
+            type: string
+            format: uuid
+          example: 'b9e7d5c3-a1b2-4f0e-9d8c-7b6a5c4d3e2f'
+        - name: filter
+          in: query
+          description: Filter books by reading shelf
+          schema:
+            type: string
+            enum:
+              - shelf_want_to_read
+              - shelf_reading
+              - shelf_read
+          example: shelf_reading
+        - name: page
+          in: query
+          description: Page number for pagination
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          description: Number of books per page
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 20
+        - name: sort
+          in: query
+          description: Sort order for library books
+          schema:
+            type: string
+            enum:
+              - date_added_desc
+              - date_added_asc
+              - title_asc
+              - title_desc
+              - author_asc
+              - author_desc
+            default: date_added_desc
+      responses:
+        "200":
+          description: Successfully retrieved user's library
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GetLibraryResponse"
+        "400":
+          description: Invalid user ID or parameters
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Access denied - private library
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/v1/library:
+    put:
+      tags:
+        - library
+      summary: Add or update book in library
+      description: |
+        Add a new book to the authenticated user's library or update an existing book's status.
+        If the book already exists in the library, it will be updated with the new information.
+      operationId: updateLibraryBook
+      requestBody:
+        description: Book information to add or update in library
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateLibraryRequest'
+            examples:
+              add_to_reading:
+                summary: Add book to currently reading shelf
+                value:
+                  book_id: "OL123456M"
+                  title: "The Hobbit"
+                  author_name: "J.R.R. Tolkien"
+                  book_image: "https://covers.openlibrary.org/b/id/123456-L.jpg"
+                  shelf: "shelf_reading"
+                  source: "OpenLibrary"
+      responses:
+        "200":
+          description: Book successfully added or updated in library
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UpdateLibraryResponse"
+        "400":
+          description: Invalid book data provided
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+    delete:
+      tags:
+        - library
+      summary: Remove book from library
+      description: |
+        Remove a specific book from the authenticated user's library.
+        This action is irreversible and will remove all associated reading progress.
+      operationId: removeLibraryBook
+      parameters:
+        - name: book_id
+          in: query
+          required: true
+          description: Unique identifier of the book to remove from library
+          schema:
+            type: string
+            minLength: 1
+          example: 'OL123456M'
+      responses:
+        "204":
+          description: Book successfully removed from library
+        "400":
+          description: Missing or invalid book_id parameter
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Book not found in user's library
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/v1/profile:
+    get:
+      tags:
+        - profile
+      summary: Get current user profile
+      description: |
+        Retrieve the complete profile information for the currently authenticated user.
+        Returns all profile details including private information like email.
+      operationId: getCurrentUserProfile
+      responses:
+        "200":
+          description: Successfully retrieved user profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GetProfileResponse"
+        "401":
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+    post:
+      tags:
+        - profile
+      summary: Create user profile
+      description: |
+        Create a new user profile. This endpoint is typically called during the 
+        user registration process after initial authentication.
+        
+        **Requirements:**
+        - Username must be unique across the platform
+        - Email must be valid and unique
+        - All required fields must be provided
+      operationId: createUserProfile
+      requestBody:
+        description: User profile information
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateProfileRequest'
+            examples:
+              new_user:
+                summary: New user profile creation
+                value:
+                  first_name: "Jane"
+                  last_name: "Doe"
+                  email: "jane.doe@example.com"
+                  username: "janereads"
+                  profile_photo: "https://example.com/avatars/jane.jpg"
+      responses:
+        "201":
+          description: User profile created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreateProfileResponse"
+        "400":
+          description: Invalid user data provided
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                validation_error:
+                  summary: Validation errors
+                  value:
+                    code: "VALIDATION_ERROR"
+                    message: "Invalid input data"
+                    details:
+                      errors:
+                        - field: "email"
+                          message: "Invalid email format"
+                        - field: "username"
+                          message: "Username must be at least 3 characters"
+        "409":
+          description: User with provided email or username already exists
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+    patch:
+      tags:
+        - profile
+      summary: Update user profile
+      description: |
+        Update specific fields of the authenticated user's profile. Only provided 
+        fields will be updated; omitted fields remain unchanged.
+        
+        **Updateable Fields:**
+        - first_name, last_name: Display names
+        - email: Must be unique if changed
+        - username: Must be unique if changed
+        - profile_photo: URL to profile image
+      operationId: updateUserProfile
+      requestBody:
+        description: Profile fields to update (partial update supported)
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateProfileRequest'
+            examples:
+              update_name:
+                summary: Update display name only
+                value:
+                  first_name: "Jane Marie"
+                  last_name: "Smith"
+      responses:
+        "200":
+          description: Profile updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UpdateProfileResponse"
+        "400":
+          description: Invalid update data provided
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Username or email already exists
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+    delete:
+      tags:
+        - profile
+      summary: Delete user profile
+      description: |
+        Permanently delete the authenticated user's profile and all associated data.
+        This action is irreversible and will:
+        
+        - Remove the user profile
+        - Delete all library entries
+        - Remove all posts and comments
+        - Unfollow all users and remove all followers
+        
+        **Warning:** This action cannot be undone.
+      operationId: deleteUserProfile
+      responses:
+        "204":
+          description: User profile deleted successfully
+        "401":
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/v1/users/{user_id}:
+    get:
+      tags:
+        - users
+      summary: Get user information
+      description: |
+        Retrieve public profile information for any user on the platform.
+        Returns limited information compared to the profile endpoint (no private data).
+      operationId: getUserById
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          description: UUID of the user to retrieve
+          schema:
+            type: string
+            format: uuid
+          example: 'b9e7d5c3-a1b2-4f0e-9d8c-7b6a5c4d3e2f'
+      responses:
+        "200":
+          description: Successfully retrieved user information
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GetUserResponse"
+        "400":
+          description: Invalid user ID format
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/v1/users/{user_id}/follow:
+    post:
+      tags:
+        - users
+      summary: Follow a user
+      description: |
+        Follow another user to see their posts in your personalized feed.
+        Users cannot follow themselves.
+      operationId: followUser
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          description: UUID of the user to follow
+          schema:
+            type: string
+            format: uuid
+          example: 'b9e7d5c3-a1b2-4f0e-9d8c-7b6a5c4d3e2f'
+      responses:
+        "204":
+          description: Successfully followed user
+        "400":
+          description: Invalid request (e.g., trying to follow yourself)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Already following this user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/v1/users/{user_id}/unfollow:
+    delete:
+      tags:
+        - users
+      summary: Unfollow a user
+      description: |
+        Unfollow a previously followed user. Their posts will no longer appear 
+        in your personalized feed.
+      operationId: unfollowUser
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          description: UUID of the user to unfollow
+          schema:
+            type: string
+            format: uuid
+          example: 'b9e7d5c3-a1b2-4f0e-9d8c-7b6a5c4d3e2f'
+      responses:
+        "204":
+          description: Successfully unfollowed user
+        "400":
+          description: Invalid user ID format
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: User not found or not currently following
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/v1/feed:
+    get:
+      tags:
+        - feed
+      summary: Get personalized feed
+      description: |
+        Retrieve the authenticated user's personalized content feed, containing posts 
+        from followed users, ordered by relevance and recency.
+        
+        **Feed Algorithm:**
+        - Posts from followed users
+        - Ordered by engagement and recency
+        - Includes book updates, reviews, and reading progress
+      operationId: getPersonalizedFeed
+      parameters:
+        - name: page
+          in: query
+          description: Page number for pagination
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          description: Number of posts per page
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 20
+        - name: since
+          in: query
+          description: Only return posts created after this timestamp
+          schema:
+            type: string
+            format: date-time
+          example: "2023-10-01T00:00:00Z"
+      responses:
+        "200":
+          description: Successfully retrieved personalized feed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GetFeedResponse"
+        "401":
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/v1/feed/{user_id}:
+    get:
+      tags:
+        - feed
+      summary: Get user's public posts
+      description: |
+        Retrieve public posts from a specific user. This shows the user's 
+        reading activity, reviews, and updates that they've made public.
+      operationId: getUserFeed
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          description: UUID of the user whose posts to retrieve
+          schema:
+            type: string
+            format: uuid
+          example: 'b9e7d5c3-a1b2-4f0e-9d8c-7b6a5c4d3e2f'
+        - name: page
+          in: query
+          description: Page number for pagination
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          description: Number of posts per page
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 20
+      responses:
+        "200":
+          description: Successfully retrieved user's posts
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GetFeedResponse"
+        "400":
+          description: Invalid user ID format
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/v1/posts:
+    post:
+      tags:
+        - feed
+      summary: Create a new post
+      description: |
+        Create a new post to share reading progress, thoughts, or book recommendations.
+        Posts can optionally be associated with a specific book from the user's library.
+        
+        **Post Types:**
+        - Reading updates (progress, status changes)
+        - Book reviews and ratings
+        - Reading thoughts and quotes
+        - Book recommendations
+      operationId: createPost
+      requestBody:
+        description: Post content and associated book information
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePostRequest'
+            examples:
+              book_review:
+                summary: Book review post
+                value:
+                  summary: "Just finished The Hobbit!"
+                  description: "What an incredible journey! Tolkien's world-building is masterful and Bilbo's character development throughout the adventure is beautifully crafted. Highly recommend to anyone who loves fantasy adventures."
+                  book:
+                    id: "OL123456M"
+                    author: "J.R.R. Tolkien"
+                    title: "The Hobbit"
+                    image_url: "https://covers.openlibrary.org/b/id/123456-L.jpg"
+                    rating: "rating_five_star"
+                    status: "shelf_read"
+      responses:
+        "201":
+          description: Post created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Post"
+        "400":
+          description: Invalid post data provided
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+                
+  /api/v1/posts/{post_id}:
+    parameters:
+      - name: post_id
+        in: path
+        required: true
+        description: The unique identifier of the post to update or delete.
+        schema:
+          type: string
+          format: uuid
+        example: 'd1e2f3g4-h5i6-7j8k-9l0m-1n2o3p4q5r6s'
+  
+    put:
+      tags:
+        - feed
+      summary: Update a post
+      description: |
+        Allows an authenticated user to update a post they created.  
+        Post content, associated book information, or other attributes can be modified.
+      operationId: updatePost
+      requestBody:
+        description: Updated post content and associated details
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdatePostRequest'
+      responses:
+        "200":
+          description: Post updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Post"
+        "400":
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Post not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  
+    delete:
+      tags:
+        - feed
+      summary: Delete a post
+      description: |
+        Allows an authenticated user to delete a post they created.  
+        Deleted posts are permanently removed and cannot be recovered.
+      operationId: deletePost
+      responses:
+        "204":
+          description: Post deleted successfully
+        "404":
+          description: Post not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/posts/{post_id}/comments:
+    parameters:
+      - name: post_id
+        in: path
+        required: true
+        description: The unique identifier of the post to comment on.
+        schema:
+          type: string
+          format: uuid
+        example: 'd1e2f3g4-h5i6-7j8k-9l0m-1n2o3p4q5r6s'
+      - name: page
+        in: query
+        required: false
+        description: Page number for pagination (default is 1).
+        schema:
+          type: integer
+          default: 1
+      - name: limit
+        in: query
+        required: false
+        description: Number of comments to return per page (default is 20).
+        schema:
+          type: integer
+          default: 20
+  
+    post:
+      tags:
+        - feed
+      summary: Add a comment to a post
+      description: |
+        Allows an authenticated user to add a comment to a specific post.  
+        Comments can contain text-based reactions, thoughts, or feedback related to the post.
+      operationId: addComment
+      requestBody:
+        description: Comment object to be created
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCommentRequest'
+      responses:
+        "201":
+          description: Comment created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Comment"
+        "400":
+          description: Invalid comment data provided (e.g., empty content)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Post not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  
+    get:
+      tags:
+        - feed
+      summary: Retrieve comments for a post
+      description: |
+        Retrieve a paginated list of comments associated with a specific post.  
+        Supports pagination through `page` and `limit` query parameters.
+      operationId: getCommentsForPost
+      responses:
+        "200":
+          description: Comments retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CommentsResponse"
+        "404":
+          description: Post not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  
+
+  /api/v1/posts/{post_id}/comments/{comment_id}:
+    parameters:
+      - in: path
+        name: post_id
+        schema:
+          type: string
+          format: uuid
+        description: The **unique identifier of the parent post** where the comment resides.
+        required: true
+        example: 'd1e2f3g4-h5i6-7j8k-9l0m-1n2o3p4q5r6s'
+      - in: path
+        name: comment_id
+        schema:
+          type: string
+          format: uuid
+        description: The **unique identifier of the comment to be deleted**.
+        required: true
+        example: 'c1a2b3d4-e5f6-7890-1234-567890abcdef'
+    delete:
+      tags:
+        - feed
+      summary: Delete a specific comment from a post
+      description: |
+        Allows an **authenticated user** to **permanently delete a comment** they own
+        from a specific post.
+        
+        **Important Considerations:**
+        - Only the user who created the comment, or an administrator, can delete it.
+        - Deleting a comment is irreversible.
+        - The `comments_count` on the parent post will be decremented.
+      operationId: deleteComment
+      responses:
+        "204":
+          description: Comment successfully deleted. **No Content** is returned upon successful deletion.
+          # 204 No Content typically does not include a response body.
+        "400":
+          description: Invalid request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                invalid_uuid:
+                  summary: Invalid ID format
+                  value:
+                    code: "INVALID_FORMAT"
+                    message: "One or more provided IDs are not valid UUIDs."
+                not_authorized:
+                  summary: User not authorized
+                  value:
+                    code: "UNAUTHORIZED_ACTION"
+                    message: "You are not authorized to delete this comment."
+        "401":
+          description: Authentication required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                unauthenticated:
+                  summary: Missing or invalid authentication token
+                  value:
+                    code: "UNAUTHENTICATED"
+                    message: "Authentication token is missing or invalid."
+        "404":
+          description: Post or comment not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                post_not_found:
+                  summary: Post not found
+                  value:
+                    code: "RESOURCE_NOT_FOUND"
+                    message: "The specified post was not found."
+                comment_not_found:
+                  summary: Comment not found
+                  value:
+                    code: "RESOURCE_NOT_FOUND"
+                    message: "The specified comment was not found on this post."
+        "500":
+          description: Internal Server Error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/v1/posts/{post_id}/like:
+    parameters:
+      - in: path
+        name: post_id
+        schema:
+          type: string
+          format: uuid
+        description: The **unique identifier of the post** to be liked.
+        required: true
+        example: 'd1e2f3g4-h5i6-7j8k-9l0m-1n2o3p4q5r6s'
+    post: # Using PUT for idempotent actions (liking multiple times has same effect)
+      tags:
+        - feed
+      summary: Like a post
+      description: |
+        Allows an **authenticated user** to **add a like** to a specific post.
+        
+        This operation is **idempotent**:
+        - If the user has already liked the post, the operation will still succeed (204 No Content)
+          and will not result in multiple likes from the same user.
+        - The `likes_count` on the post will be incremented if this is the first like
+          from the authenticated user.
+      operationId: likePost
+      responses:
+        "204":
+          description: Post successfully liked. **No Content** is returned.
+        "400":
+          description: Invalid request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                invalid_uuid:
+                  summary: Invalid ID format
+                  value:
+                    code: "INVALID_FORMAT"
+                    message: "The provided post ID is not a valid UUID."
+                self_like:
+                  summary: Cannot like own post
+                  value:
+                    code: "INVALID_ACTION"
+                    message: "Users cannot like their own posts."
+        "401":
+          description: Authentication required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                unauthenticated:
+                  summary: Missing or invalid authentication token
+                  value:
+                    code: "UNAUTHENTICATED"
+                    message: "Authentication token is missing or invalid."
+        "404":
+          description: Post not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                post_not_found:
+                  summary: Post not found
+                  value:
+                    code: "RESOURCE_NOT_FOUND"
+                    message: "The specified post was not found."
+        "500":
+          description: Internal Server Error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+
+  /api/v1/posts/{post_id}/unlike:
+    parameters:
+      - in: path
+        name: post_id
+        schema:
+          type: string
+          format: uuid
+        description: The **unique identifier of the post** to unlike.
+        required: true
+        example: 'd1e2f3g4-h5i6-7j8k-9l0m-1n2o3p4q5r6s'
+    delete: # Using DELETE for removing a resource (the "like")
+      tags:
+        - feed
+      summary: Unlike a post
+      description: |
+        Allows an **authenticated user** to **remove their like** from a specific post.
+        
+        This operation is **idempotent**:
+        - If the user has not liked the post, the operation will still succeed (204 No Content)
+          as the desired state (unliked) is achieved.
+        - The `likes_count` on the post will be decremented if the user had previously liked it.
+      operationId: unlikePost
+      responses:
+        "204":
+          description: Post successfully unliked. **No Content** is returned.
+        "400":
+          description: Invalid request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                invalid_uuid:
+                  summary: Invalid ID format
+                  value:
+                    code: "INVALID_FORMAT"
+                    message: "The provided post ID is not a valid UUID."
+        "401":
+          description: Authentication required.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                unauthenticated:
+                  summary: Missing or invalid authentication token
+                  value:
+                    code: "UNAUTHENTICATED"
+                    message: "Authentication token is missing or invalid."
+        "404":
+          description: Post not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                post_not_found:
+                  summary: Post not found
+                  value:
+                    code: "RESOURCE_NOT_FOUND"
+                    message: "The specified post was not found."
+        "500":
+          description: Internal Server Error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 components:
   schemas:
     GetBooksResponse:
@@ -98,7 +1313,6 @@ components:
         - rating_count
         - rating_average
         - source
-
       properties:
         id:
           type: string
@@ -121,6 +1335,466 @@ components:
           type: number
         source:
           type: string
+          enum:
+            - OpenLibrary
+            
+  # Library Schemas
+    GetLibraryResponse:
+      type: object
+      required:
+        - library
+      properties:
+        library:
+          type: array
+          items:
+            $ref: "#/components/schemas/LibraryBook"
+    UpdateLibraryRequest:
+      type: object
+      required:
+        - book_id
+        - title
+        - author_name
+        - book_image
+        - shelf
+        - source
+      properties:
+        book_id:
+          type: string
+          description: Unique identifier for the book
+        title:
+          type: string
+        author_name:
+          type: string
+        book_image:
+          type: string
+        shelf:
+          type: string
+          enum:
+            - shelf_want_to_read
+            - shelf_reading
+            - shelf_read
+        source:
+          type: string
+          enum:
+            - OpenLibrary
+    UpdateLibraryResponse:
+      type: object
+      required:
+        - book_id
+        - title
+        - author_name
+        - book_image
+        - shelf
+        - source
+        - last_updated
+      properties:
+        book_id:
+          type: string
+          description: Unique identifier for the book
+        title:
+          type: string
+        author_name:
+          type: string
+        book_image:
+          type: string
+        shelf:
+          type: string
+          enum:
+            - WantToRead
+            - Reading
+            - Finished
+        source:
+          type: string
+          enum:
+            - OpenLibrary
+    LibraryBook:
+      type: object
+      required:
+        - book_id
+        - title
+        - author_name
+        - book_image
+        - shelf
+        - source
+        - last_updated
+      properties:
+        book_id:
+          type: string
+          description: Unique identifier for the book
+        title:
+          type: string
+        author_name:
+          type: string
+        book_image:
+          type: string
+        shelf:
+          type: string
+          enum:
+            - shelf_want_to_read
+            - shelf_reading
+            - shelf_read
+        source:
+          type: string
+          enum:
+            - OpenLibrary
+        rating:
+          type: string
+          enum:
+            - "rating_unknown"
+            - "rating_one_star"
+            - "rating_two_star"
+            - "rating_three_star"
+            - "rating_four_star"
+            - "rating_five_star"
+            
+            
+  # Users Schema  
+    CreateProfileRequest:
+      type: object
+      required:
+        - first_name
+        - last_name
+        - email
+        - username
+        - profile_photo
+      properties:
+        first_name:
+          type: string
+        last_name:
+          type: string
+        email:
+          type: string
+        username:
+          type: string
+        profile_photo:
+          type: string
+          
+    CreateProfileResponse:
+      type: object
+      required:
+        - id
+        - first_name
+        - last_name
+        - email
+        - username
+        - profile_photo
+        - created_at
+      properties:
+        id:
+          type: string
+        first_name:
+          type: string
+        last_name:
+          type: string
+        email:
+          type: string
+        username:
+          type: string
+        profile_photo:
+          type: string
+        created_at:
+          type: string
+    
+    UpdateProfileRequest:
+      type: object
+      properties:
+        first_name:
+          type: string
+        last_name:
+          type: string
+        email:
+          type: string
+        username:
+          type: string
+        profile_photo:
+          type: string 
+          
+    UpdateProfileResponse:
+      type: object
+      required:
+        - id
+        - first_name
+        - last_name
+        - email
+        - username
+        - profile_photo
+        - created_at
+      properties:
+        id:
+          type: string
+        first_name:
+          type: string
+        last_name:
+          type: string
+        email:
+          type: string
+        username:
+          type: string
+        profile_photo:
+          type: string
+        created_at:
+          type: string
+            
+    GetProfileResponse:
+      type: object
+      required:
+        - id
+        - first_name
+        - last_name
+        - email
+        - username
+        - profile_photo
+        - created_at
+      properties:
+        id:
+          type: string
+        first_name:
+          type: string
+        last_name:
+          type: string
+        email:
+          type: string
+        username:
+          type: string
+        profile_photo:
+          type: string
+        created_at:
+          type: string
+          
+    GetUserResponse:
+      type: object
+      required:
+        - id
+        - first_name
+        - last_name
+        - username
+        - profile_photo
+      properties:
+        id:
+          type: string
+        first_name:
+          type: string
+        last_name:
+          type: string
+        username:
+          type: string
+        profile_photo:
+          type: string
+          
+    GetFeedResponse:
+      type: object
+      required:
+        - posts
+      properties:
+        posts:
+          type: array
+          items: 
+            $ref: "#/components/schemas/Post"
+          
+    Post:
+      required:
+        - id
+        - user_id
+        - summary
+        - description
+      type: object
+      properties:
+        id:
+          type: string
+        user_id:
+          type: string
+        summary:
+          type: string
+        description:
+          type: string
+        book:
+          type: object
+          description: Details about the book in this log entry
+          properties:
+            id: 
+              type: string
+            author:
+              type: string
+            title:
+              type: string
+            image_url:
+              type: string
+            rating:
+              type: string
+              enum:
+                - "rating_unknown"
+                - "rating_one_star"
+                - "rating_two_star"
+                - "rating_three_star"
+                - "rating_four_star"
+                - "rating_five_star" 
+            status:
+              enum:
+                - shelf_want_to_read
+                - shelf_reading 
+        like_count:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+          description: Timestamp when the comment was created
+          readOnly: true
+          example: '2023-10-27T10:35:15Z'
+        
+        
+    CreatePostRequest:
+      required:
+        - title
+        - description
+      type: object
+      properties:
+        summary:
+          type: string
+        description:
+          type: string
+        book:
+          type: object
+          description: Details about the book in this log entry
+          properties:
+            id: 
+              type: string
+            author:
+              type: string
+            title:
+              type: string
+            image_url:
+              type: string
+            rating:
+              type: string
+              enum:
+                - "rating_unknown"
+                - "rating_one_star"
+                - "rating_two_star"
+                - "rating_three_star"
+                - "rating_four_star"
+                - "rating_five_star" 
+            status:
+              enum:
+                - shelf_want_to_read
+                - shelf_reading
+                - shelf_read
+                
+    UpdatePostRequest:
+      type: object
+      properties:
+        summary:
+          type: string
+        description:
+          type: string
+        book:
+          type: object
+          description: Updated book details (optional)
+          properties:
+            id: 
+              type: string
+            author:
+              type: string
+            title:
+              type: string
+            image_url:
+              type: string
+            rating:
+              type: string
+              enum:
+                - "rating_unknown"
+                - "rating_one_star"
+                - "rating_two_star"
+                - "rating_three_star"
+                - "rating_four_star"
+                - "rating_five_star" 
+            status:
+              enum:
+                - shelf_want_to_read
+                - shelf_reading
+                - shelf_read
+
+        
+      
+   # --- Comment Schemas ---
+    Comment:
+      type: object
+      required:
+        - id
+        - post_id
+        - user_id
+        - content
+        - created_at
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique identifier for the comment
+          readOnly: true
+          example: 'c1a2b3d4-e5f6-7890-1234-567890abcdef'
+        post_id:
+          type: string
+          format: uuid
+          description: The ID of the post this comment belongs to
+          readOnly: true
+          example: 'd1e2f3g4-h5i6-7j8k-9l0m-1n2o3p4q5r6s'
+        user_id:
+          type: string
+          format: uuid
+          description: The ID of the user who created the comment
+          readOnly: true
+          example: 'a1b2c3d4-e5f6-7890-1234-567890abcdef'
+        content:
+          type: string
+          description: The textual content of the comment
+          minLength: 1
+          maxLength: 250
+          example: "Agreed! That book was a wild ride."
+        created_at:
+          type: string
+          format: date-time
+          description: Timestamp when the comment was created
+          readOnly: true
+          example: '2023-10-27T10:35:15Z'
+
+    CreateCommentRequest:
+      type: object
+      required:
+        - content
+      properties:
+        content:
+          type: string
+          description: The textual content of the comment
+          minLength: 1
+          maxLength: 250
+          example: "Such a great read! The characters were amazing."
+        
+    CommentsResponse:
+      type: object
+      properties:
+        comments:
+          type: array
+          items:
+            $ref: '#/components/schemas/Comment'
+        page:
+          type: integer
+          example: 1
+        limit:
+          type: integer
+          example: 20
+        total:
+          type: integer
+          example: 57
+      example:
+        comments:
+          - id: "a3b4c5d6-e7f8-9012-3456-7890abcdef12"
+            post_id: "d1e2f3g4-h5i6-7j8k-9l0m-1n2o3p4q5r6s"
+            user_id: "u8v7w6x5-y4z3-2a1b-0c9d-8e7f6g5h4i3j"
+            content: "Loved this review — totally agree with your thoughts!"
+            created_at: "2024-05-30T14:28:23Z"
+        page: 1
+        limit: 20
+        total: 57
+
 
     ErrorResponse:
       type: object
