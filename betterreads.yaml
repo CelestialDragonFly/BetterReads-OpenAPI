@@ -48,6 +48,11 @@ tags:
     externalDocs:
       description: Library Management Guide
       url: https://docs.betterreads.com/library #tbd
+  - name: shelves
+    description: Personal shelf management operations
+    externalDocs:
+      description: Shelf Management Guide
+      url: https://docs.betterreads.com/shelves #tbd
   - name: profile
     description: Current user profile management
     externalDocs:
@@ -199,42 +204,33 @@ paths:
       summary: Get user's library
       description: |
         Retrieve books from a user's personal library. Users can only access their own 
-        library unless the target user's library is public.
-        
-        **Library Shelves:**
-        - `shelf_want_to_read`: Books the user wants to read
-        - `shelf_reading`: Books currently being read
-        - `shelf_read`: Books the user has finished reading
+        library unless the target user's library is public. Returns each book with its 
+        global reading status, rating, and the list of shelves it currently belongs to.
       operationId: getUserLibrary
       parameters:
         - name: user_id
           in: path
           required: true
-          description: UUID of the user whose library to retrieve
           schema:
             type: string
             format: uuid
-          example: 'b9e7d5c3-a1b2-4f0e-9d8c-7b6a5c4d3e2f'
-        - name: filter
+        - name: status
           in: query
-          description: Filter books by reading shelf
+          description: Filter books by reading status
           schema:
             type: string
             enum:
-              - shelf_want_to_read
-              - shelf_reading
-              - shelf_read
-          example: shelf_reading
+              - status_want_to_read
+              - status_reading
+              - status_read
         - name: page
           in: query
-          description: Page number for pagination
           schema:
             type: integer
             minimum: 1
             default: 1
         - name: limit
           in: query
-          description: Number of books per page
           schema:
             type: integer
             minimum: 1
@@ -242,7 +238,6 @@ paths:
             default: 20
         - name: sort
           in: query
-          description: Sort order for library books
           schema:
             type: string
             enum:
@@ -285,6 +280,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+
   /api/v1/library:
     put:
       tags:
@@ -303,13 +299,13 @@ paths:
               $ref: '#/components/schemas/UpdateLibraryRequest'
             examples:
               add_to_reading:
-                summary: Add book to currently reading shelf
+                summary: Add book to currently reading status 
                 value:
                   book_id: "OL123456M"
                   title: "The Hobbit"
                   author_name: "J.R.R. Tolkien"
                   book_image: "https://covers.openlibrary.org/b/id/123456-L.jpg"
-                  shelf: "shelf_reading"
+                  status: "status_reading"
                   source: "OpenLibrary"
       responses:
         "200":
@@ -381,6 +377,246 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+                
+  /api/v1/shelves:
+    get:
+      tags:
+        - shelves
+      summary: List shelves for a user
+      operationId: listUserShelves
+      parameters:
+        - name: user_id
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: sort
+          in: query
+          schema:
+            type: string
+            enum: [created_at_desc, created_at_asc, name_asc, name_desc]
+      responses:
+        "200":
+          description: List of shelves
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GetUserShelvesResponse"
+        "400":
+          description: Invalid parameters
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+    post:
+      tags:
+        - shelves
+      summary: Create a new shelf
+      operationId: createShelf
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+      responses:
+        "201":
+          description: Shelf created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Shelf"
+        "400":
+          description: Duplicate shelf name or invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/v1/shelves/{shelf_id}:
+    delete:
+      tags:
+        - shelves
+      summary: Delete a shelf
+      operationId: deleteShelf
+      parameters:
+        - name: shelf_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Shelf deleted
+        "403":
+          description: Not authorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Shelf not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/v1/shelves/{shelf_id}/books:
+    get:
+      tags:
+        - shelves
+      summary: List books in a shelf
+      operationId: listBooksInShelf
+      parameters:
+        - name: shelf_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: sort
+          in: query
+          schema:
+            type: string
+            enum: [added_at_desc, added_at_asc, title_asc, title_desc, author_asc, author_desc]
+      responses:
+        "200":
+          description: Books in shelf
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GetShelfBooksResponse"
+        "403":
+          description: Not authorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Shelf not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+    post:
+      tags:
+        - shelves
+      summary: Add a book to a shelf
+      operationId: addBookToShelf
+      parameters:
+        - name: shelf_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [book_id]
+              properties:
+                book_id:
+                  type: string
+      responses:
+        "200":
+          description: Book added to shelf
+        "400":
+          description: Book not in library or already in shelf
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Not authorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Shelf or book not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/v1/shelves/{shelf_id}/books/{book_id}:
+    delete:
+      tags:
+        - shelves
+      summary: Remove a book from a shelf
+      operationId: removeBookFromShelf
+      parameters:
+        - name: shelf_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: book_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Book removed
+        "403":
+          description: Not authorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Shelf or book not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
 
   /api/v1/profile:
     get:
@@ -860,7 +1096,7 @@ paths:
                     title: "The Hobbit"
                     image_url: "https://covers.openlibrary.org/b/id/123456-L.jpg"
                     rating: "rating_five_star"
-                    status: "shelf_read"
+                    status: "status_read"
       responses:
         "201":
           description: Post created successfully
@@ -1370,9 +1606,9 @@ components:
         shelf:
           type: string
           enum:
-            - shelf_want_to_read
-            - shelf_reading
-            - shelf_read
+            - status_want_to_read
+            - status_reading
+            - status_read
         source:
           type: string
           enum:
@@ -1414,38 +1650,48 @@ components:
         - title
         - author_name
         - book_image
-        - shelf
+        - status
         - source
         - last_updated
       properties:
         book_id:
           type: string
-          description: Unique identifier for the book
         title:
           type: string
         author_name:
           type: string
         book_image:
           type: string
-        shelf:
+        status:
           type: string
-          enum:
-            - shelf_want_to_read
-            - shelf_reading
-            - shelf_read
+          enum: [status_want_to_read, status_reading, status_read]
         source:
           type: string
-          enum:
-            - OpenLibrary
+          enum: [OpenLibrary]
         rating:
           type: string
           enum:
-            - "rating_unknown"
-            - "rating_one_star"
-            - "rating_two_star"
-            - "rating_three_star"
-            - "rating_four_star"
-            - "rating_five_star"
+            - rating_unknown
+            - rating_one_star
+            - rating_two_star
+            - rating_three_star
+            - rating_four_star
+            - rating_five_star
+        shelves:
+          type: array
+          description: List of shelves this book belongs to for the user
+          items:
+            type: object
+            required: [shelf_id, name]
+            properties:
+              shelf_id:
+                type: string
+              name:
+                type: string
+        last_updated:
+          type: string
+          format: date-time
+
             
             
   # Users Schema  
@@ -1630,8 +1876,8 @@ components:
                 - "rating_five_star" 
             status:
               enum:
-                - shelf_want_to_read
-                - shelf_reading 
+                - status_want_to_read
+                - status_reading 
         like_count:
           type: integer
         created_at:
@@ -1675,9 +1921,9 @@ components:
                 - "rating_five_star" 
             status:
               enum:
-                - shelf_want_to_read
-                - shelf_reading
-                - shelf_read
+                - status_want_to_read
+                - status_reading
+                - status_read
                 
     UpdatePostRequest:
       type: object
@@ -1709,9 +1955,9 @@ components:
                 - "rating_five_star" 
             status:
               enum:
-                - shelf_want_to_read
-                - shelf_reading
-                - shelf_read
+                - status_want_to_read
+                - status_reading
+                - status_read
 
         
       
@@ -1794,6 +2040,79 @@ components:
         page: 1
         limit: 20
         total: 57
+
+    Shelf:
+      type: object
+      required: [shelf_id, name, owner_id, created_at]
+      properties:
+        shelf_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        owner_id:
+          type: string
+          format: uuid
+        created_at:
+          type: string
+          format: date-time
+  
+    GetUserShelvesResponse:
+      type: object
+      required: [shelves]
+      properties:
+        shelves:
+          type: array
+          items:
+            $ref: "#/components/schemas/Shelf"
+  
+    ShelfBook:
+      type: object
+      required:
+        - book_id
+        - title
+        - author_name
+        - book_image
+        - status
+        - source
+        - rating
+        - added_at
+      properties:
+        book_id:
+          type: string
+        title:
+          type: string
+        author_name:
+          type: string
+        book_image:
+          type: string
+        status:
+          type: string
+          enum: [status_want_to_read, status_reading, status_read]
+        source:
+          type: string
+          enum: [OpenLibrary]
+        rating:
+          type: string
+          enum:
+            - rating_unknown
+            - rating_one_star
+            - rating_two_star
+            - rating_three_star
+            - rating_four_star
+            - rating_five_star
+        added_at:
+          type: string
+          format: date-time
+  
+    GetShelfBooksResponse:
+      type: object
+      required: [books]
+      properties:
+        books:
+          type: array
+          items:
+            $ref: "#/components/schemas/ShelfBook"
 
 
     ErrorResponse:
