@@ -196,6 +196,72 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/books/{book_id}:
+    get:
+      tags:
+        - books
+      summary: Get book details by ID
+      description: |
+        Retrieve detailed information about a specific book by its unique identifier.
+  
+        Book IDs are sourced from integrated book providers like OpenLibrary or internal systems.
+      operationId: getBookById
+      parameters:
+        - name: book_id
+          in: path
+          required: true
+          description: Unique identifier for the book (e.g., OpenLibrary ID)
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 50
+          example: "OL123456M"
+      responses:
+        "200":
+          description: Successfully retrieved book details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Book"
+              examples:
+                book_found:
+                  summary: Book details response
+                  value:
+                    id: "OL123456M"
+                    title: "The Lord of the Rings"
+                    author_name: "J.R.R. Tolkien"
+                    book_image: "https://covers.openlibrary.org/b/id/123456-L.jpg"
+                    source: "OpenLibrary"
+                    author_id: "OL26320A"
+                    published_year: 1954
+                    isbn: "9780547928227"
+                    rating_count: 150000
+                    rating_average: 4.5
+        "404":
+          description: Book not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                book_not_found:
+                  summary: Book not found response
+                  value:
+                    code: "NOT_FOUND"
+                    message: "No book found with ID 'OL999999M'"
+        "429":
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
 
   /api/v1/library/{user_id}:
     get:
@@ -302,11 +368,7 @@ paths:
                 summary: Add book to currently reading status 
                 value:
                   book_id: "OL123456M"
-                  title: "The Hobbit"
-                  author_name: "J.R.R. Tolkien"
-                  book_image: "https://covers.openlibrary.org/b/id/123456-L.jpg"
                   status: "status_reading"
-                  source: "OpenLibrary"
       responses:
         "200":
           description: Book successfully added or updated in library
@@ -1588,61 +1650,17 @@ components:
       type: object
       required:
         - book_id
-        - title
-        - author_name
-        - book_image
-        - shelf
-        - source
+        - status
       properties:
         book_id:
           type: string
           description: Unique identifier for the book
-        title:
+        status:
           type: string
-        author_name:
-          type: string
-        book_image:
-          type: string
-        shelf:
-          type: string
-          enum:
-            - status_want_to_read
-            - status_reading
-            - status_read
-        source:
-          type: string
-          enum:
-            - OpenLibrary
+          enum: [status_want_to_read, status_reading, status_read]
     UpdateLibraryResponse:
       type: object
-      required:
-        - book_id
-        - title
-        - author_name
-        - book_image
-        - shelf
-        - source
-        - last_updated
-      properties:
-        book_id:
-          type: string
-          description: Unique identifier for the book
-        title:
-          type: string
-        author_name:
-          type: string
-        book_image:
-          type: string
-        shelf:
-          type: string
-          enum:
-            - WantToRead
-            - Reading
-            - Finished
-        source:
-          type: string
-          enum:
-            - OpenLibrary
+      
     LibraryBook:
       type: object
       required:
